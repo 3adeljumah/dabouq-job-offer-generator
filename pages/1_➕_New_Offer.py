@@ -1,19 +1,27 @@
 import streamlit as st
-from datetime import datetime
 
-from components.auth import logout_button, require_login
+from components.auth import init_session, login_form, logout_button
 from config import DEFAULT_CONTRACT, JOB_TEMPLATES
-from services.database import create_offer, mark_sent, update_offer
+from services.database import create_offer, init_db, mark_sent, update_offer
 from services.email import send_hr_notification, send_offer_email
 from services.helpers import build_offer_payload, clean_filename, footer_defaults as get_footer_defaults, money, salary_split
 from services.ocr import extract_document_data
 from services.pdf import generate_pdf
 
-require_login()
+init_session()
+
+if not st.session_state.logged_in:
+    login_form()
+    st.stop()
+
+init_db()
 logout_button()
 
 st.title("➕ عرض وظيفي جديد")
 st.caption("إنشاء وإرسال عرض وظيفي للمرشّح")
+
+if st.button("← العودة للعروض"):
+    st.switch_page("app.py")
 
 if "ocr_data" not in st.session_state:
     st.session_state.ocr_data = {"full_name": "", "nationality": "", "document_number": ""}
@@ -200,7 +208,7 @@ with btn3:
                 mark_sent(offer_id)
                 send_hr_notification(offer, "sent")
                 st.success("✅ تم إرسال العرض بنجاح!")
-                st.info("يمكنك متابعة حالة العرض من لوحة التحكم.")
+                st.info("يمكنك متابعة حالة العرض من صفحة العروض.")
             except Exception as e:
                 update_offer(offer_id, {}, status="draft")
                 st.error(f"فشل الإرسال: {e}")
